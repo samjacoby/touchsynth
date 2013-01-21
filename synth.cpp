@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 #include "sinetable.h"
+#include "audio.h"
 
 // Variable to hold the next sample that will be output to the speaker
 // static volatile uint8_t next_sample;
@@ -21,13 +23,9 @@ void synth_init(void) {
 ISR(TIMER0_COMPA_vect) {
     audio_output(next_sample);
     synth_ready = 0;
-
 }
 
-
-
-
-void synth_generate(void) {
+void synth_generate(uint16_t note) {
 
     uint16_t carrier_inc;
     uint16_t carrier_pos;
@@ -43,9 +41,9 @@ void synth_generate(void) {
 
     uint8_t modulation;
 
-    if(synth_ready) return
+    if(synth_ready) return;
 
-    carrier_inc = 127;
+    carrier_inc = note;
     mod_ratio_numerator = 1;
     mod_ratio_denominator = 2;
 
@@ -59,12 +57,12 @@ void synth_generate(void) {
 
     modulator_pos += modulator_inc;
     mpos += modulator_pos & SINETABLE_MASK;
-    modulation = pgm_read_byte(sinetable[&mpos]);
+    modulation = pgm_read_byte(&sinetable[mpos]);
 
     carrier_pos += carrier_inc;
     cpos += carrier_inc + modulation;
 
-    sample = pgm_read_byte(sinetable[&cpos]);
+    next_sample = pgm_read_byte(&sinetable[cpos]);
 
     synth_ready = 1;
 }

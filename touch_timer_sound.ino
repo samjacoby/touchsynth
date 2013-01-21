@@ -35,8 +35,9 @@ void loop() {
     
     Serial.println(data_str);
     delay(10);
+    uint16_t note = 127;
     for(;;) {
-        synth_generate(); 
+        synth_generate(127); 
     }
 
 }
