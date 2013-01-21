@@ -9,11 +9,11 @@
 void audio_init(void) {
 
     DDRD |= (1 << PIND0);
-    TCCR1A = (1 << COM1A1) | (1 << WGM10);
+    TCCR1A = (1 << COM1B1) | (1 << WGM10);
     TCCR1B = (1 << WGM12) | (1 << CS10);   
-    TIMSK1 = (1 << OCIE1A);
+//    TIMSK1 = (1 << OCIE1A);
 
-    OCR1A = 0;
+    OCR1A = 127;
 
 }
 

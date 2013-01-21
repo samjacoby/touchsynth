@@ -13,6 +13,7 @@ static volatile uint8_t next_sample;
 // static volatile uint8_t synth_ready;
 static volatile uint8_t synth_ready;
 
+// Schedule the synth
 void synth_init(void) {
     TCCR0A = (1 << WGM01); //CTC
     TCCR0B = (1 << CS01) | (1 << CS00);
