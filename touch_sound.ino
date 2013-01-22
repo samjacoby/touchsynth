@@ -40,25 +40,17 @@ void synth_play(uint16_t note, uint16_t duration)  {
     }
 }
 
+long sense() {
+    return clip_one.capSense(5);
+
+}
+
 void loop() {
-    for(;;) {
-        synth_clear();
-        synth_play(1, 1000);
-        synth_play(2, 750);
-        synth_play(3, 500);
-        synth_play(4, 1000);
-        synth_play(2, 500);
-        delay(100);
-        synth_play(2, 500);
-        delay(100);
-        synth_play(2, 500);
-        delay(100);
-        synth_play(3, 100);
-        delay(100);
-        synth_play(2, 500);
-        delay(100);
-        synth_play(2, 750);
-        synth_play(3, 100);
+    long s = sense();
+    Serial.println(s);
+    if(s > 12) {
+        long s_map = map(s, 0, 700, 1, 63);
+        synth_play(s_map, 20);
     }
 }
 

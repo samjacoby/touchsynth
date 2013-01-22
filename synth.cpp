@@ -29,9 +29,7 @@ void synth_init(void) {
 static volatile uint8_t t_inc = 1;
 static volatile uint8_t t_pos = 0;
 ISR(TIMER3_COMPA_vect) {
-    //next_sample = pgm_read_byte(&sinetable[t_pos & SINETABLE_MASK]);
     audio_output(next_sample);
-    //t_pos += t_inc;
     synth_ready = 0;
 }
 
@@ -41,6 +39,7 @@ static volatile uint16_t carrier_inc;
 static volatile uint16_t carrier_pos = 0;
 static volatile uint16_t modulator_inc;
 static volatile uint16_t modulator_pos = 0;
+static volatile uint8_t amplitude = 30;
 
 void synth_clear() {
     carrier_pos = 0;
@@ -76,8 +75,8 @@ void synth_generate(uint16_t note) {
     PORTF ^= (1 << LED2); 
 
     carrier_inc = note;
-    mod_ratio_numerator = 36;
-    mod_ratio_denominator = 18;
+    mod_ratio_numerator = 0;
+    mod_ratio_denominator = 2;
 
     modulator_inc = carrier_inc * mod_ratio_numerator / mod_ratio_denominator;
 
@@ -91,7 +90,7 @@ void synth_generate(uint16_t note) {
     carrier_pos += carrier_inc; // should this effect the frequency?
     cpos = (carrier_pos + modulation) & SINETABLE_MASK;
 
-    next_sample = pgm_read_byte(&sinetable[cpos]);
+    next_sample = (pgm_read_byte(&sinetable[cpos]) * amplitude) >> 8;
 
     synth_ready = 1;
 }
