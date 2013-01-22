@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <Arduino.h>
 
+#include "touch_sound.h"
 #include "sinetable.h"
 #include "audio.h"
 
@@ -15,13 +17,15 @@ static volatile uint8_t synth_ready;
 
 // Schedule the synth
 void synth_init(void) {
-    TCCR0A = (1 << WGM01); //CTC
-    TCCR0B = (1 << CS01) | (1 << CS00);
-    TIMSK0 = 1 << OCIE0A;
-    OCR0A = 127;
+    PORTF = (1 << LED1);
+    TCCR3A = (1 << WGM31); //CTC
+    TCCR3B = (1 << CS31) | (1 << CS30);
+    TIMSK3 = 1 << OCIE3A;
+    OCR4A = 127;
 }
 
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER3_COMPA_vect) {
+    PORTF ^= (1 << LED2); 
     audio_output(next_sample);
     synth_ready = 0;
 }

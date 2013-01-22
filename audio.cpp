@@ -8,17 +8,15 @@
  */
 void audio_init(void) {
 
-    DDRD |= (1 << PIND0);
-    TCCR1A = (1 << COM1B1) | (1 << WGM10);
+    DDRB |= (1 << PINB7);
+    TCCR1A = (1 << COM1C1) | (1 << WGM10);
     TCCR1B = (1 << WGM12) | (1 << CS10);   
-//    TIMSK1 = (1 << OCIE1A);
-
-    OCR1A = 127;
+    OCR1C = 200;
 
 }
 
 
 void audio_output(uint8_t next_sample) {
     // TODO: essentially, this should only set OCR1A. 
-    OCR1A = next_sample; 
+    OCR1C = next_sample; 
 }
