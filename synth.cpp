@@ -23,17 +23,16 @@ void synth_init(void) {
     TIMSK3 = 1 << OCIE3A;
     OCR3A = 0x022C; // N = 14400
 
-    synth_ready = 0;
+    synth_ready = 1;
 }
 
 static volatile uint8_t t_inc = 1;
 static volatile uint8_t t_pos = 0;
 ISR(TIMER3_COMPA_vect) {
-    PORTF ^= (1 << LED2); 
-    next_sample = pgm_read_byte(&sinetable[t_pos & SINETABLE_MASK]);
+    //next_sample = pgm_read_byte(&sinetable[t_pos & SINETABLE_MASK]);
     audio_output(next_sample);
-    t_pos += t_inc;
-    //synth_ready = 0;
+    //t_pos += t_inc;
+    synth_ready = 0;
 }
 
 
@@ -43,11 +42,16 @@ static volatile uint16_t carrier_pos = 0;
 static volatile uint16_t modulator_inc;
 static volatile uint16_t modulator_pos = 0;
 
+void synth_clear() {
+    carrier_pos = 0;
+    modulator_pos = 0;
+}
+
 void synth_generate(uint16_t note) {
-    uint16_t next_sample;
     uint8_t cpos = 0;
 
     if(synth_ready) return;
+    PORTF ^= (1 << LED2); 
 
     carrier_inc = note;
     carrier_pos += carrier_inc;
@@ -55,6 +59,7 @@ void synth_generate(uint16_t note) {
     next_sample = pgm_read_byte(&sinetable[cpos]);
 
     synth_ready = 1;
+
 }
 
 void synth_generates(uint16_t note) {
