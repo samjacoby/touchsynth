@@ -24,7 +24,7 @@ void synth_init(void) {
     TIMSK3 = 1 << OCIE3A;
     OCR3A = 1;
 
-    synth_ready = 1;
+    synth_ready = 0;
 }
 
 ISR(TIMER3_COMPA_vect) {
@@ -57,9 +57,6 @@ void synth_generate(uint16_t note) {
     mod_ratio_denominator = 3;
 
     modulator_inc = carrier_inc * mod_ratio_numerator / mod_ratio_denominator;
-
-//    modulator_pos = 0;
-//    carrier_pos = 0;
 
     cpos = 0;
     mpos = 0;
