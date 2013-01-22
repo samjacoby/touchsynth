@@ -42,7 +42,4 @@ void loop() {
     uint16_t note = 127;
     */
 
-    synth_generate(70); 
-    synth_generate(140); 
-    synth_generate(40); 
 }
