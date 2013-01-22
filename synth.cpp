@@ -47,7 +47,7 @@ void synth_clear() {
     modulator_pos = 0;
 }
 
-void synth_generate(uint16_t note) {
+void synth_generates(uint16_t note) {
     uint8_t cpos = 0;
 
     if(synth_ready) return;
@@ -62,7 +62,7 @@ void synth_generate(uint16_t note) {
 
 }
 
-void synth_generates(uint16_t note) {
+void synth_generate(uint16_t note) {
 
     uint16_t mod_ratio_numerator;
     uint16_t mod_ratio_denominator; 
@@ -73,10 +73,11 @@ void synth_generates(uint16_t note) {
     uint8_t modulation;
 
     if(synth_ready) return;
+    PORTF ^= (1 << LED2); 
 
     carrier_inc = note;
-    mod_ratio_numerator = 20;
-    mod_ratio_denominator = 1;
+    mod_ratio_numerator = 36;
+    mod_ratio_denominator = 18;
 
     modulator_inc = carrier_inc * mod_ratio_numerator / mod_ratio_denominator;
 
@@ -88,7 +89,7 @@ void synth_generates(uint16_t note) {
     modulation = pgm_read_byte(&sinetable[mpos]);
 
     carrier_pos += carrier_inc; // should this effect the frequency?
-    cpos = (carrier_inc + modulation) & SINETABLE_MASK;
+    cpos = (carrier_pos + modulation) & SINETABLE_MASK;
 
     next_sample = pgm_read_byte(&sinetable[cpos]);
 
