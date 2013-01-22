@@ -20,7 +20,7 @@ void setup()
    DDRF |= (1 << LED1) | (1 << LED2);
    cli();
    audio_init();
-   //synth_init();
+   synth_init();
    sei();
 
    Serial.begin(115200);
@@ -42,6 +42,7 @@ void loop() {
     uint16_t note = 127;
     */
 
-    synth_generate(1000); 
-
+    for(;;) {
+        synth_generate(70); 
+    }
 }
