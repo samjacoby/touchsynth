@@ -28,7 +28,6 @@ void setup() {
 }
 
 unsigned long s_time;
-
 void synth_play(uint16_t note, uint16_t duration)  {
     synth_clear();
     s_time = millis();
@@ -40,6 +39,7 @@ void synth_play(uint16_t note, uint16_t duration)  {
     }
 }
 
+uint8_t active = 1;
 char * data_str = (char*) malloc(18 * sizeof(char));
 void loop() {
 
@@ -51,11 +51,35 @@ void loop() {
 
     Serial.println(data_str);
 
-    if(s1 > 20) {
-        synth_set_mod_ratio(s2, s3);
-        long s_map = map(s1, 0, 700, 1, 63);
-        synth_play(s_map, 5);
+    while(s1 > 20) {
+        active = 0;
+        play_note(s1);
+        s1 = clip_one.capSense(5);
+        s1 = map(s1, 20, 700, 1, 63);
+        delay(100);
     }
-    delay(5);
+    active = 1;
 }
+
+void play_song() {
+    synth_clear();
+    synth_play(1, 1000);
+    synth_play(2, 750);
+    synth_play(3, 500);
+    synth_play(4, 1000);
+    synth_play(2, 500);
+    delay(100);
+    synth_play(2, 500);
+    delay(100);
+    synth_play(2, 500);
+    delay(100);
+    synth_play(3, 100);
+    delay(100);
+    synth_play(2, 500);
+    delay(100);
+    synth_play(2, 750);
+    synth_play(3, 100);
+}
+
+
 
