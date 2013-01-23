@@ -39,32 +39,24 @@ static volatile uint16_t carrier_inc;
 static volatile uint16_t carrier_pos = 0;
 static volatile uint16_t modulator_inc;
 static volatile uint16_t modulator_pos = 0;
-static volatile uint8_t amplitude = 30;
+static volatile uint8_t amplitude = 120;
+
+static volatile uint16_t mod_ratio_numerator;
+static volatile uint16_t mod_ratio_denominator; 
 
 void synth_clear() {
     carrier_pos = 0;
     modulator_pos = 0;
 }
 
-void synth_generates(uint16_t note) {
-    uint8_t cpos = 0;
-
-    if(synth_ready) return;
-    PORTF ^= (1 << LED2); 
-
-    carrier_inc = note;
-    carrier_pos += carrier_inc;
-    cpos = carrier_pos & SINETABLE_MASK;
-    next_sample = pgm_read_byte(&sinetable[cpos]);
-
-    synth_ready = 1;
-
+void synth_set_mod_ratio(uint16_t mod_ratio_numerator, uint16_t mod_ratio_denominator) {
+    mod_ratio_numerator = mod_ratio_numerator;
+    mod_ratio_denominator = mod_ratio_denominator;
 }
+
 
 void synth_generate(uint16_t note) {
 
-    uint16_t mod_ratio_numerator;
-    uint16_t mod_ratio_denominator; 
 
     uint8_t cpos;
     uint8_t mpos;
