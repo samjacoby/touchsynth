@@ -15,8 +15,10 @@ static volatile uint8_t next_note;
 static volatile uint8_t next_sample;
 
 // Flag indicating whether the next sample has been computed.
-// static volatile uint8_t synth_ready;
 static volatile uint8_t synth_ready;
+
+// Flag indicating whether or not the synth is active
+static volatile uint8_t synth_active;
 
 // Schedule the synth
 void synth_init(void) {
@@ -30,6 +32,15 @@ void synth_init(void) {
     synth_ready = 1;
 }
 
+void synth_enable(void) {
+    synth_active = 0;
+}
+
+void synth_disable(void) {
+    synth_active = 1;
+
+}
+
 static volatile uint8_t t_inc = 1;
 static volatile uint8_t t_pos = 0;
 volatile static uint16_t last_note;
@@ -38,7 +49,7 @@ static volatile uint16_t carrier_inc;
 static volatile uint16_t carrier_pos = 0;
 static volatile uint16_t modulator_inc;
 static volatile uint16_t modulator_pos = 0;
-static volatile uint8_t amplitude = 10;
+static volatile uint8_t amplitude = 60;
 
 static volatile uint16_t mod_ratio_numerator = 0;
 static volatile uint16_t mod_ratio_denominator = 1; 
@@ -65,7 +76,7 @@ void synth_generate(uint16_t note) {
     uint8_t modulation;
 
     if(synth_ready) return;
-    PORTF ^= (1 << LED2); 
+    PORTF |= (1 << LED2); 
 
     carrier_inc = note;
 
@@ -88,7 +99,7 @@ void synth_generate(uint16_t note) {
 }
 
 ISR(TIMER3_COMPA_vect) {
-    if(active) return;
+    if(synth_active) return;
     synth_generate(next_note);
     audio_output(next_sample);
     synth_ready = 0;

@@ -4,9 +4,9 @@ import math
 
 p_bin = lambda x: int(pow(2, x))
 
-tablebits = 6
+tablebits = 8
 tableres = 8
-tablesize = p_bin(6) 
+tablesize = p_bin(tablebits) 
 
 h = open("sinetable.h", "w")
 c = open("sinetable.c", "w")

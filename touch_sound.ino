@@ -43,22 +43,32 @@ uint8_t active = 1;
 char * data_str = (char*) malloc(18 * sizeof(char));
 void loop() {
 
-    long s1 = clip_one.capSense(5);
+    long s1, s1o;
+    s1 = clip_one.capSense(5);
+    s1o = s1;
+
     long s2 = clip_two.capSense(5);
     long s3 = clip_three.capSense(5);
     long s4 = clip_four.capSense(5);
-    sprintf(data_str, "%lu, %lu, %lu, %lu", s1, s2, s3, s4);
 
+    sprintf(data_str, "%lu, %lu, %lu, %lu", s1, s2, s3, s4);
     Serial.println(data_str);
 
-    while(s1 > 20) {
-        active = 0;
-        play_note(s1);
-        s1 = clip_one.capSense(5);
-        s1 = map(s1, 20, 700, 1, 63);
-        delay(100);
+    uint8_t i = 1;
+    while(s1 > 40) {
+            synth_enable();
+            uint16_t s_t = ((s1o * 7) + s1) >> 3;
+            Serial.println(s_t);
+            uint16_t s_tm = map(s_t, 40, 500, 5 ,127);
+            Serial.println(s_tm);
+            //play_note(s_t);
+            synth_play(s_tm, 350);
+            s1o = s1;
+            s1 = clip_one.capSense(5);
+            delay(20);
     }
-    active = 1;
+    synth_disable();
+    PORTF &= ~(1 << LED2);
 }
 
 void play_song() {
