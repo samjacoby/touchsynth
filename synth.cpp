@@ -92,7 +92,7 @@ void synth_generate(uint16_t note) {
     carrier_pos += carrier_inc; // should this effect the frequency?
     cpos = (carrier_pos + modulation) & SINETABLE_MASK;
 
-    next_sample = (pgm_read_byte(&sinetable[cpos]) * amplitude) >> 8;
+    next_sample = (pgm_read_byte(&sinetable[cpos]) * amplitude) >> 3;
 
     last_note = note;
     synth_ready = 1;
