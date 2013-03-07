@@ -23,7 +23,6 @@ static volatile uint8_t synth_active;
 // Schedule the synth
 void synth_init(void) {
 
-    PORTF = (1 << LED1);
     TCCR3A = (1 << WGM31) | (1 << WGM30);
     TCCR3B = (1 << WGM33) |  (1 << CS30);
     TIMSK3 = 1 << OCIE3A;
@@ -49,7 +48,7 @@ static volatile uint16_t carrier_inc;
 static volatile uint16_t carrier_pos = 0;
 static volatile uint16_t modulator_inc;
 static volatile uint16_t modulator_pos = 0;
-static volatile uint8_t amplitude = 60;
+static volatile uint8_t next_amplitude = 20;
 
 static volatile uint16_t mod_ratio_numerator = 0;
 static volatile uint16_t mod_ratio_denominator = 1; 
@@ -59,16 +58,36 @@ void synth_clear() {
     modulator_pos = 0;
 }
 
+void synth_set_amplitude(uint8_t amplitude) {
+    next_amplitude = amplitude;
+}
+
 void synth_set_mod_ratio(uint16_t mod_ratio_numerator_v, uint16_t mod_ratio_denominator_v) {
     mod_ratio_numerator = mod_ratio_numerator_v;
     mod_ratio_denominator = mod_ratio_denominator_v;
 }
 
-void play_note(uint16_t note) {
+void synth_stop_note(void) {
+   next_note = 0; 
+}
+
+void synth_play_note(uint16_t note) {
     next_note = note;
 }
 
 void synth_generate(uint16_t note) {
+
+    uint16_t cpos = 0;
+    carrier_inc = note;
+    carrier_pos += carrier_inc;
+
+    cpos = carrier_pos & SINETABLE_MASK; 
+    next_sample = (pgm_read_byte(&sinetable[cpos]) * next_amplitude) >> 8;
+
+}
+
+
+void synth_generate_slim(uint16_t note) {
 
     uint8_t cpos;
     uint8_t mpos;
@@ -76,7 +95,6 @@ void synth_generate(uint16_t note) {
     uint8_t modulation;
 
     if(synth_ready) return;
-    PORTF |= (1 << LED2); 
 
     carrier_inc = note;
 
@@ -92,7 +110,7 @@ void synth_generate(uint16_t note) {
     carrier_pos += carrier_inc; // should this effect the frequency?
     cpos = (carrier_pos + modulation) & SINETABLE_MASK;
 
-    next_sample = (pgm_read_byte(&sinetable[cpos]) * amplitude) >> 3;
+    next_sample = (pgm_read_byte(&sinetable[cpos]) * next_amplitude) >> 8;
 
     last_note = note;
     synth_ready = 1;
@@ -102,6 +120,4 @@ ISR(TIMER3_COMPA_vect) {
     if(synth_active) return;
     synth_generate(next_note);
     audio_output(next_sample);
-    synth_ready = 0;
-
 }

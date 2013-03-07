@@ -7,89 +7,118 @@
 #include "sinetable.h"
 #include "synth.h"
 
-CapSense clip_one = CapSense(13, 5);
-CapSense clip_two = CapSense(9, 10);
-CapSense clip_three = CapSense(6, 8);
-CapSense clip_four = CapSense(4, 12);
+#define SERIALON
+
+typedef struct {
+    CapSense *clip;
+    uint8_t active;
+    uint16_t calibration;
+    uint8_t shift;
+    uint16_t last;
+
+} sense_t; 
+
+#define NUMCLIPS 4
+#define SAMPLES 10
+
+sense_t clips[NUMCLIPS];
+
+//byte notes[] = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36};
+byte notes[] = { 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 130 };
+
+
+CapSense clip0 = CapSense(13, 5);
+CapSense clip1 = CapSense(9, 10);
+CapSense clip2 = CapSense(6, 8);
+CapSense clip3 = CapSense(4, 12);
+
+CapSense *sensors[] = {
+    &clip0,
+    &clip1,
+    &clip2,
+    &clip3,
+};
 
 uint8_t next_sample = 0;
 
 void setup() {
 
-   DDRF |= (1 << LED1) | (1 << LED2);
+    DDRF |= (1 << LED1) | (1 << LED2);
 
-   cli();
-   audio_init();
-   synth_init();
-   sei();
+    cli();
+    audio_init();
+    synth_init();
+    synth_set_amplitude(255);
+    sei();
+    
+    #ifdef SERIALON
+    Serial.begin(115200);
+    #endif
 
-   Serial.begin(115200);
+    uint8_t pinIndex = 0;
+    for(byte i=0; i < NUMCLIPS; i++) {
+        pinIndex = i * 2; 
+        clips[i].clip = sensors[i]; 
+        clips[i].active = 0;
+        clips[i].shift = i << 3; // multiply by eight 
+        clips[i].calibration = 0; // multiply by eight 
+    }
+
+    calibrate();
+}
+
+void calibrate() {
+
+    for(int i=0; i < NUMCLIPS; i++) {
+        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + 10) << 3;
+        delay(10);
+    }
 
 }
 
-unsigned long s_time;
 void synth_play(uint16_t note, uint16_t duration)  {
     synth_clear();
-    s_time = millis();
+    unsigned long s_time = millis();
     for(;;) {
-        synth_generate(note);
+        synth_play_note(note);
         if(millis() - s_time > duration) {
-            break; 
+            synth_stop_note();
         }
     }
 }
 
 uint8_t active = 1;
-char * data_str = (char*) malloc(18 * sizeof(char));
+
+uint8_t notes_i = 0;
+uint8_t notes_mask = 7;
+
 void loop() {
 
-    long s1, s1o;
-    s1 = clip_one.capSense(5);
-    s1o = s1;
+    long sense;
+    
+    for(int i=0; i < NUMCLIPS; i++) {
 
-    long s2 = clip_two.capSense(5);
-    long s3 = clip_three.capSense(5);
-    long s4 = clip_four.capSense(5);
+        sense = clips[i].clip->capSense(SAMPLES);  
+        clips[i].last = sense;
 
-    sprintf(data_str, "%lu, %lu, %lu, %lu", s1, s2, s3, s4);
-    Serial.println(data_str);
+        if(sense > clips[i].calibration) {
+            PORTF |= 1 << LED2;
+            synth_play_note(notes[notes_i + clips[i].shift]); 
+            clips[i].active = 1;
+        } else if(clips[i].active) {
+            PORTF &= ~(1 << LED2);
+            clips[i].active = 0; 
+            notes_i = (notes_i + 1) & notes_mask;
+            synth_stop_note();
+        }
 
-    uint8_t i = 1;
-    while(s1 > 40) {
-            synth_enable();
-            uint16_t s_t = ((s1o * 7) + s1) >> 3;
-            Serial.println(s_t);
-            uint16_t s_tm = map(s_t, 40, 500, 5 ,127);
-            Serial.println(s_tm);
-            //play_note(s_t);
-            synth_play(s_tm, 350);
-            s1o = s1;
-            s1 = clip_one.capSense(5);
-            delay(20);
-    }
-    synth_disable();
-    PORTF &= ~(1 << LED2);
+    }   
+
+    delay(10);
+    #ifdef SERIALON
+    char buffer [50];
+    sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
+    Serial.println(buffer);
+    #endif
+
 }
-
-void play_song() {
-    synth_clear();
-    synth_play(1, 1000);
-    synth_play(2, 750);
-    synth_play(3, 500);
-    synth_play(4, 1000);
-    synth_play(2, 500);
-    delay(100);
-    synth_play(2, 500);
-    delay(100);
-    synth_play(2, 500);
-    delay(100);
-    synth_play(3, 100);
-    delay(100);
-    synth_play(2, 500);
-    delay(100);
-    synth_play(2, 750);
-    synth_play(3, 100);
-}
-
-
-
