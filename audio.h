@@ -2,6 +2,8 @@
 #define __audio_h_
 
 void audio_init(void);
+void audio_enable(void);
+void audio_disable(void);
 void audio_output(uint8_t next_sample);
 
 #endif //__audio_h_

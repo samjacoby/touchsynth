@@ -2,12 +2,12 @@
 #include <avr/io.h>
 #include <CapSense.h>
 
-#include "touch_sound.h"
+#include "touchsynth.h"
 #include "audio.h"
 #include "sinetable.h"
 #include "synth.h"
 
-#define SERIALON
+//#define SERIALON
 
 typedef struct {
     CapSense *clip;
@@ -15,6 +15,7 @@ typedef struct {
     uint16_t calibration;
     uint8_t shift;
     uint16_t last;
+    uint16_t trigger;
 
 } sense_t; 
 
@@ -43,7 +44,7 @@ uint8_t next_sample = 0;
 
 void setup() {
 
-    DDRF |= (1 << LED1) | (1 << LED2);
+    DDRD |= (1 << LED1) | (1 << LED2);
 
     cli();
     audio_init();
@@ -61,19 +62,19 @@ void setup() {
         clips[i].clip = sensors[i]; 
         clips[i].active = 0;
         clips[i].shift = i << 3; // multiply by eight 
-        clips[i].calibration = 0; // multiply by eight 
+        clips[i].calibration = 0;  
+        clips[i].trigger = 0; 
     }
 
     calibrate();
+    PORTF &= ~((1 << LED1) | (1 << LED2));
 }
 
+
 void calibrate() {
-
     for(int i=0; i < NUMCLIPS; i++) {
-        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + 10) << 3;
-        delay(10);
+        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + 50) ;
     }
-
 }
 
 void synth_play(uint16_t note, uint16_t duration)  {
@@ -102,19 +103,31 @@ void loop() {
         clips[i].last = sense;
 
         if(sense > clips[i].calibration) {
-            PORTF |= 1 << LED2;
+          
+            PORTD |= 1 << LED2;
+            PORTD &= ~(1 << LED1);
+            clips[i].trigger = 0;
             synth_play_note(notes[notes_i + clips[i].shift]); 
             clips[i].active = 1;
+            
         } else if(clips[i].active) {
-            PORTF &= ~(1 << LED2);
-            clips[i].active = 0; 
-            notes_i = (notes_i + 1) & notes_mask;
-            synth_stop_note();
-        }
+            
+            clips[i].trigger += 1;
+            
+            if(clips[i].trigger > 5) {
 
+                PORTD &= ~(1 << LED2);
+                PORTD |= 1 << LED1;
+                clips[i].active = 0; 
+                notes_i = (notes_i + 1) & notes_mask;
+                synth_set_mod_ratio(notes_i, 1);
+                synth_stop_note();
+
+            }
+            
+        }
     }   
 
-    delay(10);
     #ifdef SERIALON
     char buffer [50];
     sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);

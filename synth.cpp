@@ -68,10 +68,13 @@ void synth_set_mod_ratio(uint16_t mod_ratio_numerator_v, uint16_t mod_ratio_deno
 }
 
 void synth_stop_note(void) {
-   next_note = 0; 
+    audio_disable();
+    next_note = 0; 
+
 }
 
 void synth_play_note(uint16_t note) {
+    audio_enable();
     next_note = note;
 }
 
@@ -87,21 +90,18 @@ void synth_generate(uint16_t note) {
 }
 
 
-void synth_generate_slim(uint16_t note) {
 
-    uint8_t cpos;
-    uint8_t mpos;
+void synth_generate_x(uint16_t note) {
 
-    uint8_t modulation;
+    uint16_t cpos = 0;
+    uint16_t mpos = 0;
 
-    if(synth_ready) return;
+    uint16_t modulation;
 
     carrier_inc = note;
 
     modulator_inc = carrier_inc * mod_ratio_numerator / mod_ratio_denominator;
 
-    cpos = 0;
-    mpos = 0;
 
     modulator_pos += modulator_inc;
     mpos = modulator_pos & SINETABLE_MASK;
@@ -113,7 +113,6 @@ void synth_generate_slim(uint16_t note) {
     next_sample = (pgm_read_byte(&sinetable[cpos]) * next_amplitude) >> 8;
 
     last_note = note;
-    synth_ready = 1;
 }
 
 ISR(TIMER3_COMPA_vect) {
