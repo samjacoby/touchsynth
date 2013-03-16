@@ -1,6 +1,5 @@
 #include <avr/io.h>
 #include "audio.h"
-#include "touch_sound.h"
 
 /* At a system clock of 16Mhz and a signal bit depth
  * of 8, the PWM frequency will be running at 
