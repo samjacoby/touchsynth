@@ -7,10 +7,10 @@
 #include "sinetable.h"
 #include "synth.h"
 
-//#define SERIALON
+#define SERIALON
 
 // arbitrary constant to add to baseline sensing
-#define CALIBRATION_OFFSET 50
+#define CALIBRATION_OFFSET 2
 
 typedef struct {
     CapSense *clip;
@@ -27,7 +27,6 @@ typedef struct {
 
 sense_t clips[NUMCLIPS];
 
-//byte notes[] = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36};
 byte notes[] = { 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 116, 118, 120, 24, 26, 28, 30, 32, 34, 36, 38 };
 
 // Instantiate clips
@@ -67,15 +66,14 @@ void setup() {
         clips[i].calibration = 0;  
         clips[i].trigger = 0; 
     }
-
-    calibrate();
+    
     PORTF &= ~((1 << LED1) | (1 << LED2));
 }
 
 
 void calibrate() {
     for(int i=0; i < NUMCLIPS; i++) {
-        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + CALIBRATION_OFFSET) ;
+        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) * CALIBRATION_OFFSET) ;
     }
 }
 
@@ -93,7 +91,8 @@ void loop() {
         sense = clips[i].clip->capSense(SAMPLES);  
         clips[i].last = sense;
 
-        if(sense > clips[i].calibration) {
+        //if(sense > clips[i].calibration) {
+        if(sense > 50) {} 
           
             PORTD |= 1 << LED2;
             PORTD &= ~(1 << LED1);
@@ -118,10 +117,17 @@ void loop() {
             
         }
     }   
+    /*
+    for(int i=0; i < 24; i++) {
+        synth_play_note(notes[i]);
+        delay(1000);
+    }
+    */
 
     #ifdef SERIALON
     char buffer [50];
     sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
+    sprintf(buffer, "%d, %d, %d, %d", clips[0].calibration, clips[1].calibration, clips[2].calibration, clips[3].calibration);
     Serial.println(buffer);
     #endif
 
