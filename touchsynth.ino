@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/sleep.h>
 #include <CapSense.h>
 
 #include "touchsynth.h"
@@ -11,6 +12,21 @@
 
 // arbitrary constant to add to baseline sensing
 #define CALIBRATION_OFFSET 50
+
+// button
+#define BUTTONPIN PB3
+#define POWERDOWNSTATE 2 
+
+int state = 0;          // keep track of our state
+int buttonLock = 0;    // one state per key press 
+
+int buttonState;          
+int lastButtonState = HIGH;  
+
+long lastDebounceTime = 0; 
+long debounceDelay = 50;   
+
+
 
 typedef struct {
     CapSense *clip;
@@ -30,6 +46,7 @@ sense_t clips[NUMCLIPS];
 //byte notes[] = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36};
 byte notes[] = { 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 116, 118, 120, 24, 26, 28, 30, 32, 34, 36, 38 };
 
+
 // Instantiate clips
 CapSense clip0 = CapSense(13, 5);
 CapSense clip1 = CapSense(9, 10);
@@ -45,13 +62,30 @@ CapSense *sensors[] = {
 
 uint8_t next_sample = 0;
 
+
+void state_init() {
+    DDRB &= ~(1 << BUTTONPIN); 
+    state = 0;
+    buttonLock = 0
+
+}
+
+// something is wrong with this?
+void calibrate() {
+    for(int i=0; i < NUMCLIPS; i++) {
+        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + CALIBRATION_OFFSET) ;
+    }
+}
+
+
 void setup() {
 
     DDRD |= (1 << LED1) | (1 << LED2);
 
     cli();
     audio_init();
-    synth_init();
+    button_init();
+    state_init();
     synth_set_amplitude(255);
     sei();
     
@@ -73,23 +107,56 @@ void setup() {
 }
 
 
-void calibrate() {
-    for(int i=0; i < NUMCLIPS; i++) {
-        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) + CALIBRATION_OFFSET) ;
-    }
-}
-
 uint8_t active = 1;
-
 uint8_t notes_i = 0;
 uint8_t notes_mask = 7;
+
+int readButton() {
+    int reading = PINB & (1 << BUTTONPIN); 
+
+    if(reading != lastButtonState) {
+        lastDebounceTime = millis(); 
+    }
+
+    if((millis() - lastDebounceTime) > debounceDelay) {
+        buttonState = reading;
+    }
+        
+    if(buttonState == 0) {          // active low
+
+        if(buttonLock == 1) {       // the last state was active
+            state += 1; 
+            buttonLock = 0;
+        }
+
+        // initiate a powerdown if we've pressed the button enough
+        if(state >= POWERDOWNSTATE) {   
+            state = 0;
+            buttonLock = 0;
+            cli();
+            PCICR = (1 << PCIE0);
+            PCMSK0 = (1 << BUTTONPIN);
+            PCIFR = 0x01;
+            set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+            sleep_enable();
+            sei();
+            sleep_cpu();
+            sleep_disable();
+        }
+
+    } else {
+        buttonLock = 1;
+    } 
+
+    lastButtonState = reading;
+}
+
 
 void loop() {
 
     long sense;
-    
-    for(int i=0; i < NUMCLIPS; i++) {
 
+    for(int i=0; i < NUMCLIPS; i++) {
         sense = clips[i].clip->capSense(SAMPLES);  
         clips[i].last = sense;
 
