@@ -69,8 +69,8 @@ void synth_set_mod_ratio(uint16_t mod_ratio_numerator_v, uint16_t mod_ratio_deno
 }
 
 void synth_play_note(uint16_t note) {
-    audio_enable();
     next_note = note;
+    audio_enable();
 }
 
 void synth_stop_note(void) {
@@ -117,7 +117,6 @@ void synth_generate_x(uint16_t note) {
 }
 
 ISR(TIMER3_COMPA_vect) {
-    if(synth_active) return;
     synth_generate(next_note);
     audio_output(next_sample);
 }

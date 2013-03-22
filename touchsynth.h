@@ -3,6 +3,7 @@
 
 #define LED1 PIND5 
 #define LED2 PIND2 
+#define LED3 PIND3 
 
 extern uint8_t active;
 

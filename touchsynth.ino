@@ -8,13 +8,13 @@
 #include "sinetable.h"
 #include "synth.h"
 
-//#define SERIALON
+#define SERIALON
 
 // arbitrary constant to add to baseline sensing
 #define CALIBRATION_OFFSET 50
 
 // button
-#define BUTTONPIN PB3
+#define BUTTONPIN PINB3
 #define POWERDOWNSTATE 2 
 
 int state = 0;          // keep track of our state
@@ -63,10 +63,10 @@ CapSense *sensors[] = {
 uint8_t next_sample = 0;
 
 
-void state_init() {
+void button_init() {
     DDRB &= ~(1 << BUTTONPIN); 
     state = 0;
-    buttonLock = 0
+    buttonLock = 0;
 
 }
 
@@ -85,7 +85,6 @@ void setup() {
     cli();
     audio_init();
     button_init();
-    state_init();
     synth_set_amplitude(255);
     sei();
     
@@ -103,7 +102,6 @@ void setup() {
     }
 
     calibrate();
-    PORTF &= ~((1 << LED1) | (1 << LED2));
 }
 
 
@@ -164,7 +162,9 @@ void loop() {
           
             PORTD |= 1 << LED2;
             PORTD &= ~(1 << LED1);
+
             clips[i].trigger = 0;
+
             synth_play_note(notes[notes_i + clips[i].shift]); 
             clips[i].active = 1;
             

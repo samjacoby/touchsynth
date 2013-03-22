@@ -13,17 +13,18 @@ void audio_init(void) {
 }
 
 void audio_disable(void) {
-    DDRB &= ~(1 << PINB7); 
-    TCCR1B &= ~(0x07); // disable clock source
+    //DDRB &= ~(1 << PINB7); 
+    //TCCR1B &= ~(0x07); // disable clock source
 
 }
 
 void audio_enable(void) {
-    DDRB |= (1 << PINB7);  
-    TCCR1B |= (1 << CS10); // enable clock source 
+    //DDRB |= (1 << PINB7);  
+    //TCCR1B |= (1 << CS10); // enable clock source 
 
 }
 
 void audio_output(uint8_t next_sample) {
-    OCR1C = next_sample; 
+    //OCR1C = next_sample; 
+    OCR1C = 127; 
 }
