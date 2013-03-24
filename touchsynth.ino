@@ -79,6 +79,9 @@ void setup() {
     PCICR = (1 << PCIE0);
     PCIFR = 1 << PCIF0;
     */
+    calibrate();
+    calibrate();
+    calibrate();
 }
 
 
@@ -88,7 +91,7 @@ void calibrate() {
     }
 }
 
-uint16_t last_power = 0;
+unsigned long last_power = 0;
 #define LOCKOUT 1000
 
 uint8_t active = 1;
@@ -123,6 +126,8 @@ void loop() {
         sleep_enable();
         sei();
         sleep_cpu();
+        sei();
+        last_power = millis();
     }
 
     setLED(PWR, HIGH);
@@ -130,8 +135,8 @@ void loop() {
     for(int i=0; i < NUMCLIPS; i++) {
 
         sense = clips[i].clip->capSense(SAMPLES);  
+        //sense = random(0, 102); 
         clips[i].last = sense;
-        //sense = random(0, 120);
 
         //if(sense > clips[i].calibration) {
         if(sense > 100) {
@@ -158,12 +163,6 @@ void loop() {
             
         }
     }   
-    /*
-    for(int i=0; i < 24; i++) {
-        synth_play_note(notes[i]);
-        delay(1000);
-    }
-    */
 
     #ifdef SERIALON
     char buffer [50];
@@ -181,8 +180,7 @@ ISR(PCINT0_vect) {
     PCICR = ~(1 << PCIE0);
     PCMSK0 = ~(1 << PCINT3);
     PCIFR = (1 << PCIF0);
+    sleep_disable();
     sei();
 
-    sleep_disable();
-    last_power = millis();
 }
