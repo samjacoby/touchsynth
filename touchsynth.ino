@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/sleep.h>
 #include <CapSense.h>
+
 
 #include "touchsynth.h"
 #include "audio.h"
 #include "sinetable.h"
 #include "synth.h"
 #include "led.h"
+#include "button.h"
 
 #define SERIALON
 
@@ -53,6 +56,7 @@ void setup() {
     cli();
     audio_init();
     synth_init();
+    button_init();
     synth_set_amplitude(255);
     sei();
     
@@ -68,6 +72,13 @@ void setup() {
         clips[i].trigger = 0; 
         clips[i].led = i + 3; 
     }
+
+    /* wtf
+    PCICR = ~(1 << PCIE0);
+    PCMSK0 = (1 << PCINT3);
+    PCICR = (1 << PCIE0);
+    PCIFR = 1 << PCIF0;
+    */
 }
 
 
@@ -77,6 +88,9 @@ void calibrate() {
     }
 }
 
+uint16_t last_power = 0;
+#define LOCKOUT 1000
+
 uint8_t active = 1;
 
 uint8_t notes_i = 0;
@@ -85,16 +99,42 @@ uint8_t notes_mask = 7;
 void loop() {
 
     long sense;
+
+
+    Serial.println(millis());
+    Serial.println(last_power);
+    if((button_status() == HOLD) && ((millis() - last_power) > LOCKOUT)) {
+        setLED(ALERT, HIGH);
+        #ifdef SERIALON
+        Serial.println("GOING FOR SLEEP");
+        delayMicroseconds(1000);
+        #endif
+
+        cli();
+
+        // configure interrupt for wake-up
+        PCICR = ~(1 << PCIE0);
+        PCMSK0 = (1 << PCINT3);
+        PCICR = (1 << PCIE0);
+        PCIFR = 1 << PCIF0;
+
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        setLED(ALERT, LOW);
+        sleep_enable();
+        sei();
+        sleep_cpu();
+    }
+
     setLED(PWR, HIGH);
     
     for(int i=0; i < NUMCLIPS; i++) {
 
         sense = clips[i].clip->capSense(SAMPLES);  
         clips[i].last = sense;
+        //sense = random(0, 120);
 
         //if(sense > clips[i].calibration) {
-        //DDRD &= ~((1 << A) | (1 << B) | (1 << C));
-        if(sense > 50) {
+        if(sense > 100) {
           
             setLED(clips[i].led, HIGH);
             clips[i].trigger = 0;
@@ -107,7 +147,6 @@ void loop() {
             
             if(clips[i].trigger > 5) {
 
-                //setLED(LED2, LOW);
                 setLED(clips[i].led, LOW);
 
                 clips[i].active = 0; 
@@ -128,8 +167,22 @@ void loop() {
 
     #ifdef SERIALON
     char buffer [50];
-    sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
-    Serial.println(buffer);
+//    sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
+//    Serial.println(buffer);
+    Serial.flush();
     #endif
 
+}
+
+ISR(PCINT0_vect) {
+     
+    // disable 
+    cli();
+    PCICR = ~(1 << PCIE0);
+    PCMSK0 = ~(1 << PCINT3);
+    PCIFR = (1 << PCIF0);
+    sei();
+
+    sleep_disable();
+    last_power = millis();
 }
