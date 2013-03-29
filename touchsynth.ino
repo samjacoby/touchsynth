@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 #include <CapSense.h>
 
 #include "touchsynth.h"
@@ -13,7 +14,7 @@
 #define SERIALON
 
 // percentage above which to change calibration 
-#define CALIBRATION_OFFSET .25 
+#define CALIBRATION_OFFSET .35 
 // number of ticks to wait to debounce signal
 #define SENSOR_DEBOUNCE_TICK 5
 
@@ -55,6 +56,7 @@ void setup() {
 
 
     cli();
+    WDT_off();
     audio_init();
     synth_init();
     button_init();
@@ -90,7 +92,7 @@ void calibrate() {
     }
 }
 
-unsigned long last_power = 0;
+unsigned long last_press = 0;
 #define LOCKOUT 1000
 
 uint8_t active = 1;
@@ -102,7 +104,9 @@ void loop() {
 
     long sense;
 
-    if((button_status() == HOLD) && ((millis() - last_power) > LOCKOUT)) {
+    uint8_t b_status = button_status();
+
+    if((b_status == TAP) && ((millis() - last_press) > LOCKOUT)) {
         setLED(ALERT, HIGH);
 
         #ifdef SERIALON
@@ -110,25 +114,25 @@ void loop() {
         delayMicroseconds(1000);
         #endif
 
-        cli();
-
-        // configure interrupt for wake-up
-        PCICR = ~(1 << PCIE0);
-        PCMSK0 = (1 << PCINT3);
-        PCICR = (1 << PCIE0);
-        PCIFR = 1 << PCIF0;
-
-        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        enable_external_interrupt();
         setLED(ALERT, LOW);
-        sleep_enable();
-        sei();
-        sleep_cpu();
-        sei();
-        last_power = millis();
+        power_down();
+
+        last_press = millis();
+    }
+
+    if((b_status == HOLD) && ((millis() - last_press) > LOCKOUT)) {
+        #ifdef SERIALON
+        Serial.println("GOING FOR RESET");
+        delayMicroseconds(1000);
+        #endif
+
+        last_press = millis();
+        WDT_on();
     }
 
     setLED(PWR, HIGH);
-    
+
     for(int i=0; i < NUMCLIPS; i++) {
 
         sense = clips[i].clip->capSenseRaw(SAMPLES);  
@@ -136,10 +140,11 @@ void loop() {
 
         if(sense > clips[i].calibration) {
           
+            setLED(clips[i].led, HIGH);
+
             if(!clips[i].active) {
                 clips[i].active = 1;
                 clips[i].trigger = 0;
-                setLED(clips[i].led, HIGH);
                 synth_play_note(notes[notes_i + clips[i].shift]); 
             }
             
@@ -173,11 +178,55 @@ void loop() {
 
 }
 
-ISR(PCINT0_vect) {
+ISR(INT6_vect) {
     cli();
+    /*
     PCICR = ~(1 << PCIE0);
     PCMSK0 = ~(1 << PCINT3);
     PCIFR = (1 << PCIF0);
+    */
+    disable_external_interrupt();
     sleep_disable();
+}
+
+void enable_external_interrupt() {
+    cli();
+    EIMSK &= ~(1 << INT6);
+    EICRB = !((1 << ISC61) | (1 << ISC60));
+    EIMSK = 1 << INT6;
+    EIFR = 1 << INTF6; 
+}
+
+void disable_external_interrupt() {
+    EIMSK &= ~(1 << INT6);
+    EIFR = 1 << INTF6; 
+}
+void power_down() {
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_enable();
+    sei(); // enable external interrupts for wake-up
+    sleep_cpu();
+}
+
+void WDT_on(void) {
+    cli();
+    WDTCSR = 1 << WDE; 
+    wdt_enable(WDTO_15MS);
+    delay(15); // reset
     sei();
 }
+
+void WDT_off(void) {
+    cli(); 
+    wdt_reset();
+    /* Clear WDRF in MCUSR */
+    MCUSR &= ~(1<<WDRF);
+    /* Write logical one to WDCE and WDE */
+    /* Keep old prescaler setting to prevent unintentional time-out */
+    //WDTCSR |= (1<<WDCE) | (1<<WDE); 
+    /* Turn off WDT */ 
+    wdt_disable();
+    WDTCSR = 0x00; 
+    sei();
+}
+
