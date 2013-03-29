@@ -3,7 +3,6 @@
 #include <avr/sleep.h>
 #include <CapSense.h>
 
-
 #include "touchsynth.h"
 #include "audio.h"
 #include "sinetable.h"
@@ -13,8 +12,10 @@
 
 #define SERIALON
 
-// arbitrary constant to add to baseline sensing
-#define CALIBRATION_OFFSET 2
+// percentage above which to change calibration 
+#define CALIBRATION_OFFSET .25 
+// number of ticks to wait to debounce signal
+#define SENSOR_DEBOUNCE_TICK 5
 
 typedef struct {
     CapSense *clip;
@@ -66,19 +67,14 @@ void setup() {
 
     for(byte i=0; i < NUMCLIPS; i++) {
         clips[i].clip = sensors[i]; 
+        clips[i].clip->set_CS_AutocaL_Millis(500);
         clips[i].active = 0;
         clips[i].shift = i << 3; // multiply by eight 
-        clips[i].calibration = 0;  
         clips[i].trigger = 0; 
         clips[i].led = i + 3; 
     }
 
-    /* wtf
-    PCICR = ~(1 << PCIE0);
-    PCMSK0 = (1 << PCINT3);
-    PCICR = (1 << PCIE0);
-    PCIFR = 1 << PCIF0;
-    */
+    calibrate();
     calibrate();
     calibrate();
     calibrate();
@@ -86,8 +82,11 @@ void setup() {
 
 
 void calibrate() {
+    unsigned long c;
+
     for(int i=0; i < NUMCLIPS; i++) {
-        clips[i].calibration = (clips[i].clip->capSense(SAMPLES) * CALIBRATION_OFFSET) ;
+        c = clips[i].clip->capSenseRaw(SAMPLES) ;
+        clips[i].calibration = c + c * CALIBRATION_OFFSET;
     }
 }
 
@@ -103,11 +102,9 @@ void loop() {
 
     long sense;
 
-
-    Serial.println(millis());
-    Serial.println(last_power);
     if((button_status() == HOLD) && ((millis() - last_power) > LOCKOUT)) {
         setLED(ALERT, HIGH);
+
         #ifdef SERIALON
         Serial.println("GOING FOR SLEEP");
         delayMicroseconds(1000);
@@ -134,25 +131,26 @@ void loop() {
     
     for(int i=0; i < NUMCLIPS; i++) {
 
-        sense = clips[i].clip->capSense(SAMPLES);  
-        //sense = random(0, 102); 
+        sense = clips[i].clip->capSenseRaw(SAMPLES);  
         clips[i].last = sense;
 
-        //if(sense > clips[i].calibration) {
-        if(sense > 100) {
+        if(sense > clips[i].calibration) {
           
-            setLED(clips[i].led, HIGH);
-            clips[i].trigger = 0;
-            synth_play_note(notes[notes_i + clips[i].shift]); 
-            clips[i].active = 1;
+            if(!clips[i].active) {
+                clips[i].active = 1;
+                clips[i].trigger = 0;
+                setLED(clips[i].led, HIGH);
+                synth_play_note(notes[notes_i + clips[i].shift]); 
+            }
             
         } else if(clips[i].active) {
             
             clips[i].trigger += 1;
             
-            if(clips[i].trigger > 5) {
+            if(clips[i].trigger > SENSOR_DEBOUNCE_TICK) {
 
                 setLED(clips[i].led, LOW);
+                clips[i].clip->reset_CS_AutoCal(); 
 
                 clips[i].active = 0; 
                 notes_i = (notes_i + 1) & notes_mask;
@@ -166,21 +164,20 @@ void loop() {
 
     #ifdef SERIALON
     char buffer [50];
-//    sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
-//    Serial.println(buffer);
+    sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
+    Serial.println(buffer);
+    /*sprintf(buffer, "%d, %d, %d, %d", clips[0].calibration, clips[1].calibration, clips[2].calibration, clips[3].calibration);
+    Serial.println(buffer);*/
     Serial.flush();
     #endif
 
 }
 
 ISR(PCINT0_vect) {
-     
-    // disable 
     cli();
     PCICR = ~(1 << PCIE0);
     PCMSK0 = ~(1 << PCINT3);
     PCIFR = (1 << PCIF0);
     sleep_disable();
     sei();
-
 }
