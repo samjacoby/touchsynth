@@ -20,17 +20,15 @@
 
 typedef struct {
     CapSense *clip;
+    synth_channel_t *channel;
     uint8_t active;
-    uint8_t led;
     uint16_t calibration;
+    uint8_t led;
     uint8_t shift;
     uint16_t last;
     uint16_t trigger;
-
-
 } sense_t; 
 
-#define NUMCLIPS 4
 #define SAMPLES 10
 
 sense_t clips[NUMCLIPS];
@@ -53,8 +51,6 @@ CapSense *sensors[] = {
 uint8_t next_sample = 0;
 
 void setup() {
-
-
     cli();
     WDT_off();
     audio_init();
@@ -69,6 +65,7 @@ void setup() {
 
     for(byte i=0; i < NUMCLIPS; i++) {
         clips[i].clip = sensors[i]; 
+        clips[i].channel = &channels[i]; 
         clips[i].clip->set_CS_AutocaL_Millis(500);
         clips[i].active = 0;
         clips[i].shift = i << 3; // multiply by eight 
@@ -147,7 +144,7 @@ void loop() {
             if(!clips[i].active) {
                 clips[i].active = 1;
                 clips[i].trigger = 0;
-                synth_play_note(notes[notes_i + clips[i].shift]); 
+                synth_play_note(clips[i].channel, notes[notes_i + clips[i].shift]); 
             }
             
         } else if(clips[i].active) {
@@ -162,7 +159,7 @@ void loop() {
                 clips[i].active = 0; 
                 notes_i = (notes_i + 1) & notes_mask;
                 synth_set_mod_ratio(notes_i, 1);
-                synth_stop_note();
+                synth_stop_note(clips[i].channel);
 
             }
             
@@ -172,7 +169,11 @@ void loop() {
     #ifdef SERIALON
     char buffer [50];
     sprintf(buffer, "%d, %d, %d, %d", clips[0].last, clips[1].last, clips[2].last, clips[3].last);
+    //sprintf(buffer, "%d, %d, %d, %d", clips[0].channel->carrier_inc, clips[1].channel->carrier_inc, clips[2].channel->carrier_inc, clips[3].channel->carrier_inc);
+    sprintf(buffer, "%u, %u, %u, %u", clips[0].channel->carrier_pos, clips[1].channel->carrier_pos, clips[2].channel->carrier_pos, clips[3].channel->carrier_pos);
     Serial.println(buffer);
+    //sprintf(buffer, "%d, %d, %d, %d", clips[0].channel->released, clips[1].channel->released, clips[2].channel->released, clips[3].channel->released);
+    //Serial.println(buffer);
     /*sprintf(buffer, "%d, %d, %d, %d", clips[0].calibration, clips[1].calibration, clips[2].calibration, clips[3].calibration);
     Serial.println(buffer);*/
     Serial.flush();
