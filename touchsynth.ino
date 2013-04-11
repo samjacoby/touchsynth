@@ -73,7 +73,7 @@ void setup() {
         clips[i].active = 0;
         clips[i].shift = i << 3; // multiply by eight 
         clips[i].trigger = 0; 
-        clips[i].led = i + 3; 
+        clips[i].led = i + 3;
     }
 
     calibrate();
@@ -141,6 +141,8 @@ void loop() {
         if(sense > clips[i].calibration) {
           
             setLED(clips[i].led, HIGH);
+
+            clips[i].trigger -= 1;
 
             if(!clips[i].active) {
                 clips[i].active = 1;
